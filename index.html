@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>班級平時成績登打系統</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+      background-color: #fdfaf7;
+      color: #334155;
+      padding: 10px;
+    }
+
+    .header-card {
+      background: #ffffff;
+      border: 1px solid #ffe4e6;
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .header-title { font-size: 15px; font-weight: bold; color: #1e293b; }
+    .header-desc { font-size: 11px; color: #94a3b8; }
+    .highlight-tag { color: #8b5cf6; font-weight: 600; }
+    .drag-tag { color: #f59e0b; font-weight: 600; }
+    .lock-tag { color: #10b981; font-weight: 600; }
+    .pos-tag { color: #e11d48; font-weight: 600; }
+
+    .btn-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    button {
+      cursor: pointer; border: none; border-radius: 8px;
+      font-size: 11px; padding: 5px 10px; font-weight: 600; transition: all 0.15s;
+    }
+    .btn-primary { background: #fb7185; color: #fff; }
+    .btn-primary:hover { background: #f43f5e; }
+    .btn-success { background: #34d399; color: #fff; }
+    .btn-success:hover { background: #10b981; }
+    .btn-blue { background: #38bdf8; color: #fff; }
+    .btn-blue:hover { background: #0ea5e9; }
+    .btn-gray { background: #64748b; color: #fff; }
+    .btn-gray:hover { background: #475569; }
+    .btn-outline { background: #fff; border: 1px solid #cbd5e1; color: #475569; }
+    .btn-outline:hover { background: #f1f5f9; }
+
+    .subject-tabs { display: flex; gap: 6px; overflow-x: auto; margin: 8px 0; padding-bottom: 2px; }
+    .sub-btn { background: #fff; color: #64748b; border: 1px solid #f1f5f9; padding: 5px 11px; border-radius: 10px; font-size: 11px; white-space: nowrap; }
+    .sub-btn.active { background: #fb7185; color: #ffffff; border-color: #fb7185; box-shadow: 0 2px 4px rgba(251, 113, 133, 0.2); }
+
+    .cat-bar {
+      background: #fff5f5; border: 1px solid #ffe4e6; border-radius: 8px;
+      padding: 5px 10px; font-size: 11px; color: #475569; display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px;
+      align-items: center; justify-content: space-between;
+    }
+    .cat-tag-container { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .cat-tag { background: #fff; padding: 1px 6px; border-radius: 5px; color: #e11d48; border: 1px solid #fecdd3; }
+
+    .table-container {
+      background: #ffffff; border: 1px solid #fecdd3; border-radius: 10px;
+      overflow: auto; max-height: calc(100vh - 155px); box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+
+    thead th { position: sticky; top: 0; background: #fff1f2; border-bottom: 1px solid #fda4af; padding: 4px 2px; font-size: 11px; z-index: 20; }
+    thead th.seat-header { position: sticky; top: 0; left: 0; width: 52px; background: #ffe4e6; z-index: 30; border-right: 1px solid #fda4af; text-align: center; }
+
+    th.item-col {
+      width: 82px; min-width: 82px; border-right: 1px solid #ffe4e6; position: sticky; top: 0;
+      text-align: center; padding: 4px 2px; cursor: grab; transition: background 0.2s;
+    }
+    th.item-col:active { cursor: grabbing; }
+    th.item-col.drag-over { background: #fecdd3; border-left: 2px solid #e11d48; }
+
+    .item-title { font-size: 12px; font-weight: bold; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+    .cat-select {
+      display: block; width: 96%; margin: 3px auto 0 auto; background: #ffffff;
+      border: 1px solid #fda4af; color: #e11d48; font-size: 10px; font-weight: bold; border-radius: 5px; padding: 1px 2px; outline: none;
+    }
+    .del-btn {
+      position: absolute; top: 2px; right: 2px; background: rgba(255,255,255,0.95);
+      border-radius: 50%; width: 14px; height: 14px; font-size: 9px; color: #cbd5e1; display: none; align-items: center; justify-content: center; cursor: pointer;
+    }
+    th.item-col:hover .del-btn { display: flex; }
+    .del-btn:hover { color: #f43f5e; background: #fff; }
+
+    th.total-col { width: 62px; background: #ffe4e6; color: #e11d48; border-left: 1px solid #fda4af; text-align: center; position: sticky; top: 0; z-index: 20; }
+
+    tbody td.seat-cell { position: sticky; left: 0; background: #f8fafc; font-weight: bold; font-size: 12px; color: #475569; text-align: center; border-right: 1px solid #ffe4e6; border-bottom: 1px solid #f1f5f9; z-index: 10; padding: 3px; }
+    tr.itinerant td.seat-cell { background: #f5f3ff; color: #6b21a8; }
+    .badge-itinerant { font-size: 9px; background: #ddd6fe; color: #6b21a8; padding: 1px 3px; border-radius: 4px; margin-left: 2px; }
+
+    tbody td { border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; padding: 2px; text-align: center; }
+    tr:hover td { background-color: #fffbeb; }
+
+    .score-input { width: 100%; height: 25px; border: 1px solid #e2e8f0; border-radius: 5px; text-align: center; font-size: 12px; font-weight: 500; outline: none; background: #ffffff; padding: 0; transition: all 0.2s; }
+    .score-input:focus { border-color: #fb7185; box-shadow: 0 0 0 2px rgba(251, 113, 133, 0.15); }
+    .score-input.fail { background: #fff1f2; border-color: #fda4af; color: #e11d48; font-weight: bold; }
+    .score-input.absent { background: #fef3c7; border-color: #fcd34d; color: #b45309; font-weight: bold; }
+    
+    .score-input:disabled { background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed; border-color: #e2e8f0; }
+    .score-input.fail:disabled { background-color: #fff1f2; color: #fca5a5; }
+    .score-input.absent:disabled { background-color: #fef3c7; color: #fcd34d; }
+
+    .total-cell { font-weight: bold; color: #e11d48; font-size: 12px; background: #fff5f5; border-left: 1px solid #ffe4e6; }
+
+    tfoot td {
+      position: sticky; bottom: 0; background: #fff1f2; border-top: 2px solid #fda4af;
+      padding: 5px 2px; z-index: 20; text-align: center;
+    }
+    tfoot td.seat-cell { left: 0; z-index: 30; background: #ffe4e6; }
+    
+    .btn-lock { width: 92%; padding: 4px 0; font-size: 10px; border-radius: 6px; transition: all 0.15s; }
+    .btn-lock.locked { background: #fff; border: 1px solid #fca5a5; color: #ef4444; }
+    .btn-lock.locked:hover { background: #fee2e2; }
+    .btn-lock.unlocked { background: #10b981; color: #fff; border: none; box-shadow: 0 1px 2px rgba(16,185,129,0.3); }
+    .btn-lock.unlocked:hover { background: #059669; }
+
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.35); z-index: 99; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal-content { background: #ffffff; border-radius: 12px; width: 290px; padding: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #ffe4e6; }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 4px; }
+    .form-group input, .form-group select { width: 100%; padding: 5px 7px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; outline: none; }
+
+    #toast { position: fixed; bottom: 20px; right: 20px; background: #059669; color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.15); opacity: 0; transform: translateY(10px); transition: all 0.25s ease; pointer-events: none; z-index: 100; }
+    #toast.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+  <div id="toast">操作成功！</div>
+
+  <div class="header-card">
+    <div>
+      <div class="header-title">班級平時成績登記系統 (25人)</div>
+      <div class="header-desc">
+        <span class="pos-tag">最新項目置左靠座號</span> ‧ <span class="lock-tag">防呆鎖定</span> ‧ <span class="highlight-tag">巡迴班 (02, 22, 23)</span>
+      </div>
+    </div>
+    <div class="btn-group">
+      <input type="file" id="restoreFile" accept=".json" style="display:none;" onchange="handleRestore(event)" />
+      <input type="file" id="importCsvFile" accept=".csv" style="display:none;" onchange="handleCsvImport(event)" />
+      
+      <button class="btn-gray" onclick="document.getElementById('restoreFile').click()">讀取備份檔</button>
+      <button class="btn-blue" onclick="handleBackup()">下載備份檔</button>
+      <div style="width:1px; height:18px; background:#f1f5f9; margin:0 2px;"></div>
+      <button class="btn-outline" onclick="document.getElementById('importCsvFile').click()">📥 匯入 CSV</button>
+      <button class="btn-success" onclick="exportCSV()">📤 匯出 CSV</button>
+      <button class="btn-primary" onclick="openModal()">+ 新增評量 (置左)</button>
+    </div>
+  </div>
+
+  <div class="subject-tabs" id="subjectTabs"></div>
+  <div class="cat-bar" id="categoryBar"></div>
+
+  <div class="table-container">
+    <table id="gradeTable">
+      <thead id="tableHead"></thead>
+      <tbody id="tableBody"></tbody>
+      <tfoot id="tableFoot"></tfoot>
+    </table>
+  </div>
+
+  <div class="modal-overlay" id="addModal">
+    <div class="modal-content">
+      <h3 style="font-size: 13px; margin-bottom: 10px; color: #1e293b;">新增評量項目 (自動放最左邊)</h3>
+      <div class="form-group">
+        <label>評量類別</label>
+        <select id="modalCat"></select>
+      </div>
+      <div class="form-group">
+        <label>項目名稱</label>
+        <input type="text" id="modalName" placeholder="例如：數習6、生字本" />
+      </div>
+      <div class="form-group">
+        <label>滿分標準</label>
+        <input type="number" id="modalMax" value="100" />
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 12px;">
+        <button class="btn-gray" onclick="closeModal()">取消</button>
+        <button class="btn-primary" onclick="confirmAddItem()">確認新增</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUBJECTS = [
+      { id: 'chi', name: '國語5', categories: [{ id: 'c1', name: '平時測驗', weight: 16.67 }, { id: 'c2', name: '作業成績', weight: 66.67 }, { id: 'c3', name: '學習表現', weight: 16.66 }] },
+      { id: 'math', name: '數學4', categories: [{ id: 'm1', name: '平時測驗', weight: 16.67 }, { id: 'm2', name: '作業成績', weight: 66.67 }, { id: 'm3', name: '學習表現', weight: 16.66 }] },
+      { id: 'art', name: '藝術與人文-藝術2', categories: [{ id: 'a1', name: '作品成果', weight: 60 }, { id: 'a2', name: '課堂參與', weight: 40 }] },
+      { id: 'light_school', name: '光明小學堂', categories: [{ id: 'ls1', name: '課堂參與', weight: 60 }, { id: 'ls2', name: '成果發表', weight: 40 }] },
+      { id: 'light_guidance', name: '光明點心鋪-班級輔導', categories: [{ id: 'lg1', name: '課堂參與', weight: 60 }, { id: 'lg2', name: '成果發表', weight: 40 }] },
+      { id: 'iread', name: 'I閱無國界', categories: [{ id: 'ir1', name: '課堂參與', weight: 30 }, { id: 'ir2', name: '教室常規', weight: 30 }, { id: 'ir3', name: '學習成果', weight: 40 }] },
+      { id: 'light_self', name: '光明點心鋪-自主學習', categories: [{ id: 'lsf1', name: '課堂表現', weight: 40 }, { id: 'lsf2', name: '綜合交辦作業', weight: 60 }] }
+    ];
+
+    const STUDENTS = Array.from({ length: 25 }, function(_, i) { return String(i + 1).padStart(2, '0'); });
+    const ITINERANTS = ['02', '22', '23'];
+
+    let activeSubId = 'math';
+    let draggedItemIdx = null;
+
+    function loadInitialData() {
+      let loadedAssess = null, loadedScores = null;
+      const aKeys = ['cg_assessments_pure_v2', 'class_grade_assessments_v3', 'class_grade_assessments_v2', 'cg_assessments_pure'];
+      const sKeys = ['cg_scores_pure_v2', 'class_grade_scores_v3', 'class_grade_scores_v2', 'cg_scores_pure'];
+
+      for (let i = 0; i < aKeys.length; i++) {
+        try { const val = localStorage.getItem(aKeys[i]); if (val) { const parsed = JSON.parse(val); if (parsed && Object.keys(parsed).length > 0) { loadedAssess = parsed; break; } } } catch(e) {}
+      }
+      for (let i = 0; i < sKeys.length; i++) {
+        try { const val = localStorage.getItem(sKeys[i]); if (val) { const parsed = JSON.parse(val); if (parsed && Object.keys(parsed).length > 0) { loadedScores = parsed; break; } } } catch(e) {}
+      }
+      if (!loadedAssess || !loadedAssess.math || loadedAssess.math.length === 0) {
+        loadedAssess = loadedAssess || {};
+        const now = Date.now();
+        // 預設將最新項目置於最左側
+        loadedAssess.math = [
+          { id: 'item_' + now, name: '數習5', categoryId: 'm1', maxScore: 100, locked: false },
+          { id: 'item_' + (now - 1000), name: '數習4', categoryId: 'm1', maxScore: 100, locked: false },
+          { id: 'item_' + (now - 2000), name: '數習3', categoryId: 'm2', maxScore: 100, locked: false },
+          { id: 'item_' + (now - 3000), name: '數習2', categoryId: 'm2', maxScore: 100, locked: false },
+          { id: 'item_' + (now - 4000), name: '數習1', categoryId: 'm2', maxScore: 100, locked: false }
+        ];
+      }
+      return { assessments: loadedAssess, scores: loadedScores || {} };
+    }
+
+    const initialData = loadInitialData();
+    let assessments = initialData.assessments;
+    let scores = initialData.scores;
+
+    function save() {
+      try {
+        localStorage.setItem('cg_assessments_pure_v2', JSON.stringify(assessments));
+        localStorage.setItem('cg_scores_pure_v2', JSON.stringify(scores));
+      } catch (e) {}
+    }
+
+    function showToast(text) {
+      const toast = document.getElementById('toast');
+      toast.textContent = text;
+      toast.classList.add('show');
+      setTimeout(function() { toast.classList.remove('show'); }, 1800);
+    }
+
+    function init() {
+      renderTabs();
+      renderCategoryBar();
+      renderTable();
+    }
+
+    function renderTabs() {
+      const container = document.getElementById('subjectTabs');
+      container.innerHTML = '';
+      SUBJECTS.forEach(function(sub) {
+        const btn = document.createElement('button');
+        btn.className = 'sub-btn ' + (sub.id === activeSubId ? 'active' : '');
+        btn.textContent = sub.name;
+        btn.onclick = function() { activeSubId = sub.id; renderTabs(); renderCategoryBar(); renderTable(); };
+        container.appendChild(btn);
+      });
+    }
+
+    function renderCategoryBar() {
+      const sub = SUBJECTS.find(function(s) { return s.id === activeSubId; }) || SUBJECTS[0];
+      const bar = document.getElementById('categoryBar');
+      let tagsHTML = sub.categories.map(function(c) {
+        return '<span class="cat-tag">' + c.name + ' <strong>' + c.weight + '%</strong></span>';
+      }).join('');
+      
+      bar.innerHTML = '<div class="cat-tag-container"><strong>評量配比：</strong>' + tagsHTML + '</div>' + 
+                      '<button class="btn-outline" onclick="sortItemsByTime()" title="最新項目靠座號（新到舊排序）">⏱️ 依建立時間（新→舊）</button>';
+    }
+
+    // 最新建立在最左邊（由新到舊排序）
+    function sortItemsByTime() {
+      if (!assessments[activeSubId]) return;
+      assessments[activeSubId].sort(function(a, b) {
+        const timeA = Number(a.id.replace('item_', '').split('_')[0]) || 0;
+        const timeB = Number(b.id.replace('item_', '').split('_')[0]) || 0;
+        return timeB - timeA; // 新的在前面（左邊）
+      });
+      save();
+      renderTable();
+      showToast('已依建立時間排序（新項目在最左側）！');
+    }
+
+    function renderTable() {
+      const sub = SUBJECTS.find(function(s) { return s.id === activeSubId; }) || SUBJECTS[0];
+      const items = assessments[activeSubId] || [];
+      const thead = document.getElementById('tableHead');
+      const tbody = document.getElementById('tableBody');
+      const tfoot = document.getElementById('tableFoot');
+
+      let thHTML = '<tr><th class="seat-header">座號</th>';
+      items.forEach(function(item, idx) {
+        let optionsHTML = '';
+        sub.categories.forEach(function(c) {
+          const selected = (c.id === item.categoryId) ? ' selected' : '';
+          optionsHTML += '<option value="' + c.id + '"' + selected + '>' + c.name + '</option>';
+        });
+        thHTML += '<th class="item-col" draggable="true" ' +
+          'ondragstart="onDragStart(event, ' + idx + ')" ' +
+          'ondragover="onDragOver(event)" ondragenter="onDragEnter(event)" ' +
+          'ondragleave="onDragLeave(event)" ondrop="onDrop(event, ' + idx + ')">' +
+          '<div class="item-title" title="' + item.name + '">' + item.name + '</div>' +
+          '<select class="cat-select" onchange="changeItemCategory(\'' + item.id + '\', this.value)">' + optionsHTML + '</select>' +
+          '<div class="del-btn" onclick="deleteItem(\'' + item.id + '\')" title="刪除項目">✕</div>' +
+        '</th>';
+      });
+      thHTML += '<th class="total-col">總計</th></tr>';
+      thead.innerHTML = thHTML;
+
+      let tbHTML = '';
+      STUDENTS.forEach(function(seat, rIdx) {
+        const isIt = ITINERANTS.indexOf(seat) !== -1;
+        const total = calcTotal(seat, sub, items);
+
+        tbHTML += '<tr class="' + (isIt ? 'itinerant' : '') + '">' +
+          '<td class="seat-cell">' + seat + (isIt ? '<span class="badge-itinerant">巡</span>' : '') + '</td>';
+
+        items.forEach(function(item, cIdx) {
+          const itemScores = scores[item.id] || {};
+          const val = (itemScores[seat] !== undefined) ? itemScores[seat] : '';
+          
+          let cls = 'score-input';
+          if (val !== '' && val !== '缺' && Number(val) < 60) cls += ' fail';
+          if (val === '缺') cls += ' absent';
+
+          const disabledAttr = item.locked ? 'disabled title="已鎖定，請按最下方解鎖"' : '';
+
+          tbHTML += '<td>' +
+            '<input type="text" class="' + cls + '" ' +
+              'data-col="' + cIdx + '" data-row="' + rIdx + '" ' +
+              'data-item="' + item.id + '" data-seat="' + seat + '" ' +
+              'value="' + val + '" ' + disabledAttr +
+              ' oninput="onScoreInput(this)" ' +
+              'onkeydown="onKeyNav(event, ' + cIdx + ', ' + rIdx + ')" ' +
+              'onpaste="onScorePaste(event, ' + cIdx + ', ' + rIdx + ')" ' +
+            '/>' +
+          '</td>';
+        });
+
+        tbHTML += '<td class="total-cell" id="total-' + seat + '">' + total + '</td></tr>';
+      });
+      tbody.innerHTML = tbHTML;
+
+      let tfHTML = '<tr><td class="seat-cell" style="font-size:11px;">狀態操作</td>';
+      items.forEach(function(item) {
+        if (item.locked) {
+          tfHTML += '<td><button class="btn-lock locked" onclick="toggleLock(\'' + item.id + '\')">🔒 解鎖</button></td>';
+        } else {
+          tfHTML += '<td><button class="btn-lock unlocked" onclick="toggleLock(\'' + item.id + '\')">✓ 確認</button></td>';
+        }
+      });
+      tfHTML += '<td style="background:#ffe4e6;"></td></tr>';
+      tfoot.innerHTML = tfHTML;
+    }
+
+    function toggleLock(itemId) {
+      if (!assessments[activeSubId]) return;
+      const list = assessments[activeSubId];
+      let isNowLocked = false;
+      for (let i = 0; i < list.length; i++) {
+        if (list[i].id === itemId) {
+          list[i].locked = !list[i].locked;
+          isNowLocked = list[i].locked;
+          break;
+        }
+      }
+      save();
+      renderTable();
+      if (isNowLocked) { showToast('欄位已鎖定防呆！'); }
+      else { showToast('欄位已解鎖，可開始修正。'); }
+    }
+
+    function onDragStart(e, idx) {
+      draggedItemIdx = idx;
+      if(e.target.tagName.toLowerCase() === 'select') { e.preventDefault(); return; }
+    }
+    function onDragOver(e) { e.preventDefault(); }
+    function onDragEnter(e) {
+      const th = e.target.closest('th.item-col');
+      if (th) th.classList.add('drag-over');
+    }
+    function onDragLeave(e) {
+      const th = e.target.closest('th.item-col');
+      if (th) th.classList.remove('drag-over');
+    }
+    function onDrop(e, targetIdx) {
+      e.preventDefault();
+      const th = e.target.closest('th.item-col');
+      if (th) th.classList.remove('drag-over');
+      
+      if (draggedItemIdx === null || draggedItemIdx === targetIdx) return;
+      if (!assessments[activeSubId]) return;
+      
+      const list = assessments[activeSubId];
+      const draggedItem = list.splice(draggedItemIdx, 1)[0];
+      list.splice(targetIdx, 0, draggedItem);
+      
+      save(); renderTable(); draggedItemIdx = null;
+    }
+
+    function onScorePaste(e, startCol, startRow) {
+      const clip = e.clipboardData || window.clipboardData;
+      if (!clip) return;
+      const text = clip.getData('text');
+      if (!text) return;
+      
+      if (text.indexOf('\n') !== -1 || text.indexOf('\r') !== -1 || text.indexOf('\t') !== -1) {
+        e.preventDefault();
+        const rows = text.replace(/[\r\n]+$/, '').split(/\r\n|\r|\n/);
+        const sub = SUBJECTS.find(function(s) { return s.id === activeSubId; }) || SUBJECTS[0];
+        const items = assessments[activeSubId] || [];
+        let count = 0;
+
+        rows.forEach(function(rowText, rOffset) {
+          const targetRow = startRow + rOffset;
+          if (targetRow >= STUDENTS.length) return;
+          const seat = STUDENTS[targetRow];
+          const cols = rowText.split('\t');
+          
+          cols.forEach(function(cellText, cOffset) {
+            const targetCol = startCol + cOffset;
+            if (targetCol >= items.length) return;
+            const item = items[targetCol];
+            
+            if (item.locked) return;
+
+            const cleanVal = cellText.trim();
+            if (!scores[item.id]) scores[item.id] = {};
+            scores[item.id][seat] = cleanVal;
+            count++;
+
+            const inputEl = document.querySelector('input[data-col="' + targetCol + '"][data-row="' + targetRow + '"]');
+            if (inputEl) {
+              inputEl.value = cleanVal;
+              inputEl.className = 'score-input';
+              if (cleanVal !== '' && cleanVal !== '缺' && Number(cleanVal) < 60) inputEl.classList.add('fail');
+              if (cleanVal === '缺') inputEl.classList.add('absent');
+            }
+          });
+          const totalEl = document.getElementById('total-' + seat);
+          if (totalEl) totalEl.textContent = calcTotal(seat, sub, items);
+        });
+        save();
+        if (count > 0) showToast('已成功貼上 ' + count + ' 筆成績！');
+      }
+    }
+
+    function handleCsvImport(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const buffer = evt.target.result;
+          let text = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+          if (text.indexOf('\uFFFD') !== -1) {
+            try { text = new TextDecoder('big5').decode(buffer); } catch(err) {}
+          }
+          if (text.startsWith('\uFEFF')) { text = text.substring(1); }
+
+          const rawLines = text.replace(/[\r\n]+$/, '').split(/\r\n|\r|\n/);
+          if (rawLines.length < 2) {
+            alert('CSV 檔案內容為空或格式不正確！');
+            return;
+          }
+
+          const firstLine = rawLines[0];
+          let delimiter = ',';
+          if (firstLine.indexOf('\t') !== -1) delimiter = '\t';
+          else if (firstLine.indexOf(';') !== -1) delimiter = ';';
+
+          function parseCsvRow(rowStr) {
+            return rowStr.split(delimiter).map(function(s) {
+              return s.trim().replace(/^"|"$/g, '').trim();
+            });
+          }
+
+          const headers = parseCsvRow(rawLines[0]);
+          const sub = SUBJECTS.find(function(s) { return s.id === activeSubId; }) || SUBJECTS[0];
+
+          const ignoreCols = ['座號', '身分', '身份', '身分/類別', '類別', '平時總成績', '總成績', '總計', '性別', '姓名'];
+          const itemColIndices = [];
+
+          if (!assessments[activeSubId]) assessments[activeSubId] = [];
+          const currentItems = assessments[activeSubId];
+
+          headers.forEach(function(h, colIdx) {
+            const cleanH = h.trim();
+            if (cleanH && ignoreCols.indexOf(cleanH) === -1) {
+              itemColIndices.push({ headerName: cleanH, colIdx: colIdx });
+            }
+          });
+
+          if (itemColIndices.length === 0) {
+            alert('未在 CSV 第一列中找到可匯入的成績欄位！');
+            return;
+          }
+
+          const defaultCatId = sub.categories[0] ? sub.categories[0].id : '';
+          const itemMap = [];
+
+          itemColIndices.forEach(function(info) {
+            let existingItem = null;
+            for (let i = 0; i < currentItems.length; i++) {
+              if (currentItems[i].name === info.headerName) {
+                existingItem = currentItems[i];
+                break;
+              }
+            }
+            if (!existingItem) {
+              existingItem = {
+                id: 'item_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                name: info.headerName,
+                categoryId: defaultCatId,
+                maxScore: 100,
+                locked: false
+              };
+              // 匯入的新項目同樣插入到最左邊
+              currentItems.unshift(existingItem);
+            }
+            itemMap.push({ colIdx: info.colIdx, itemId: existingItem.id, locked: existingItem.locked });
+          });
+
+          let importCount = 0;
+          for (let i = 1; i < rawLines.length; i++) {
+            if (!rawLines[i].trim()) continue;
+            const cols = parseCsvRow(rawLines[i]);
+            if (cols.length === 0) continue;
+
+            let seatNum = null;
+            for (let c = 0; c < Math.min(2, cols.length); c++) {
+              const m = cols[c].match(/\d+/);
+              if (m) {
+                const val = parseInt(m[0], 10);
+                if (val >= 1 && val <= 25) {
+                  seatNum = val;
+                  break;
+                }
+              }
+            }
+
+            if (!seatNum) continue;
+            const seat = String(seatNum).padStart(2, '0');
+
+            itemMap.forEach(function(m) {
+              if (m.locked) return;
+              const scoreVal = cols[m.colIdx];
+              if (scoreVal !== undefined && scoreVal !== '') {
+                if (!scores[m.itemId]) scores[m.itemId] = {};
+                scores[m.itemId][seat] = scoreVal;
+                importCount++;
+              }
+            });
+          }
+
+          save();
+          renderTable();
+          showToast('成功匯入 ' + importCount + ' 筆成績！');
+        } catch (err) {
+          alert('CSV 解析失敗：' + err.message);
+        }
+      };
+
+      reader.readAsArrayBuffer(file);
+      e.target.value = '';
+    }
+
+    function changeItemCategory(itemId, newCatId) {
+      if (!assessments[activeSubId]) return;
+      const list = assessments[activeSubId];
+      for (let i = 0; i < list.length; i++) {
+        if (list[i].id === itemId) { list[i].categoryId = newCatId; break; }
+      }
+      save(); renderTable();
+    }
+
+    function calcTotal(seat, sub, items) {
+      if (!items || items.length === 0) return '-';
+      let total = 0, validWeight = 0;
+      sub.categories.forEach(function(cat) {
+        const catItems = items.filter(function(it) { return it.categoryId === cat.id; });
+        if (catItems.length === 0) return;
+        let sum = 0, count = 0;
+        catItems.forEach(function(it) {
+          const raw = (scores[it.id] || {})[seat];
+          if (raw !== undefined && raw !== '' && raw !== '缺' && !isNaN(raw)) {
+            sum += (Number(raw) / it.maxScore) * 100;
+            count++;
+          }
+        });
+        if (count > 0) { total += (sum / count) * (cat.weight / 100); validWeight += cat.weight; }
+      });
+      if (validWeight === 0) return '-';
+      return ((total / validWeight) * 100).toFixed(2);
+    }
+
+    function onScoreInput(el) {
+      const itemId = el.getAttribute('data-item');
+      const seat = el.getAttribute('data-seat');
+      const val = el.value.trim();
+      if (!scores[itemId]) scores[itemId] = {};
+      scores[itemId][seat] = val;
+      save();
+
+      el.className = 'score-input';
+      if (val !== '' && val !== '缺' && Number(val) < 60) el.classList.add('fail');
+      if (val === '缺') el.classList.add('absent');
+
+      const sub = SUBJECTS.find(function(s) { return s.id === activeSubId; }) || SUBJECTS[0];
+      const items = assessments[activeSubId] || [];
+      const totalEl = document.getElementById('total-' + seat);
+      if (totalEl) totalEl.textContent = calcTotal(seat, sub, items);
+    }
+
+    function onKeyNav(e, col, row) {
+      let targetCol = col, targetRow = row, move = false;
+      if (e.key === 'Enter' || e.key === 'ArrowDown') { targetRow = row + 1; move = true; }
+      else if (e.key === 'ArrowUp') { targetRow = row - 1; move = true; }
+      else if (e.key === 'ArrowRight') { targetCol = col + 1; move = true; }
+      else if (e.key === 'ArrowLeft') { targetCol = col - 1; move = true; }
+
+      if (move) {
+        const next = document.querySelector('input[data-col="' + targetCol + '"][data-row="' + targetRow + '"]');
+        if (next && !next.disabled) { e.preventDefault(); next.focus(); next.select(); }
+      }
+    }
+
+    function openModal() {
+      const sub = SUBJECTS.find(function(s) { return s.id === activeSubId; }) || SUBJECTS[0];
+      let optHTML = '';
+      sub.categories.forEach(function(c) { optHTML += '<option value="' + c.id + '">' + c.name + ' (' + c.weight + '%)</option>'; });
+      document.getElementById('modalCat').innerHTML = optHTML;
+      document.getElementById('modalName').value = '';
+      document.getElementById('modalMax').value = '100';
+      document.getElementById('addModal').classList.add('open');
+      document.getElementById('modalName').focus();
+    }
+    function closeModal() { document.getElementById('addModal').classList.remove('open'); }
+    
+    // 【核心調整】：使用 unshift 將新項目置於最左側（座號右側第一欄）
+    function confirmAddItem() {
+      const name = document.getElementById('modalName').value.trim();
+      const catId = document.getElementById('modalCat').value;
+      const maxScore = Number(document.getElementById('modalMax').value) || 100;
+      if (!name) return alert('請輸入評量名稱');
+      if (!assessments[activeSubId]) assessments[activeSubId] = [];
+      
+      assessments[activeSubId].unshift({ id: 'item_' + Date.now(), name: name, categoryId: catId, maxScore: maxScore, locked: false });
+      save(); closeModal(); renderTable();
+      showToast('新增成功（已置於最左側）！');
+    }
+
+    function deleteItem(itemId) {
+      if (!confirm('確定要刪除此項目與所有分數嗎？')) return;
+      assessments[activeSubId] = assessments[activeSubId].filter(function(it) { return it.id !== itemId; });
+      delete scores[itemId];
+      save(); renderTable();
+      showToast('已刪除評量。');
+    }
+
+    function handleBackup() {
+      const data = { assessments: assessments, scores: scores, backupDate: new Date().toLocaleString() };
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+      a.download = '成績備份_' + new Date().toISOString().slice(0, 10) + '.json';
+      a.click();
+    }
+
+    function handleRestore(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const data = JSON.parse(evt.target.result);
+          if (data.assessments && data.scores) { assessments = data.assessments; scores = data.scores; save(); renderTable(); showToast('還原成功！'); }
+          else { alert('檔案格式錯誤！'); }
+        } catch (err) { alert('讀取失敗。'); }
+      };
+      reader.readAsText(file); e.target.value = '';
+    }
+
+    function exportCSV() {
+      const sub = SUBJECTS.find(function(s) { return s.id === activeSubId; }) || SUBJECTS[0];
+      const items = assessments[activeSubId] || [];
+      let csv = '\uFEFF座號,身分';
+      items.forEach(function(it) { csv += ',' + it.name; });
+      csv += ',平時總成績\n';
+
+      STUDENTS.forEach(function(seat) {
+        const isIt = ITINERANTS.indexOf(seat) !== -1 ? '巡迴班' : '普通班';
+        let line = seat + '號,' + isIt;
+        items.forEach(function(it) {
+          const s = (scores[it.id] && scores[it.id][seat] !== undefined) ? scores[it.id][seat] : '';
+          line += ',' + s;
+        });
+        line += ',' + calcTotal(seat, sub, items) + '\n';
+        csv += line;
+      });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+      a.download = sub.name + '_平時成績.csv';
+      a.click();
+    }
+
+    init();
+  </script>
+</body>
+</html>
