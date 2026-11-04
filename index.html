@@ -127,8 +127,8 @@
     .score-input { width: 100%; height: 25px; border: 1px solid #e2e8f0; border-radius: 5px; text-align: center; font-size: 12px; font-weight: 500; outline: none; background: #ffffff; padding: 0; transition: all 0.2s; }
     .score-input:focus { border-color: #fb7185; box-shadow: 0 0 0 2px rgba(251, 113, 133, 0.2); }
     
-    /* 1. 未登打提示色 (淺黃色提示) */
-    .score-input.empty-alert { background: #fef9c3; border-color: #fde047; color: #854d0e; }
+    /* 1. 未登打提示色 (黃色提示：無論鎖定與否均持續顯示) */
+    .score-input.empty-alert { background: #fef9c3 !important; border-color: #fde047 !important; color: #854d0e; }
     /* 2. 不及格 (紅色) */
     .score-input.fail { background: #fff1f2; border-color: #fda4af; color: #e11d48; font-weight: bold; }
     /* 3. 未交 (橘黃色警告) */
@@ -140,6 +140,7 @@
     .score-input.fail:disabled { background-color: #fff1f2; color: #fca5a5; }
     .score-input.unsubmitted:disabled { background-color: #ffedd5; color: #fdba74; }
     .score-input.leave:disabled { background-color: #e0f2fe; color: #7dd3fc; }
+    .score-input.empty-alert:disabled { background-color: #fef9c3 !important; color: #ca8a04; border-color: #fde047 !important; }
 
     .total-cell { font-weight: bold; color: #e11d48; font-size: 12px; background: #fff5f5; border-left: 1px solid #ffe4e6; }
 
@@ -155,7 +156,6 @@
     .btn-lock.unlocked { background: #10b981; color: #fff; border: none; box-shadow: 0 1px 2px rgba(16,185,129,0.3); }
     .btn-lock.unlocked:hover { background: #059669; }
 
-    /* 快捷狀態選單 Context Menu */
     .status-menu {
       display: none; position: fixed; background: #ffffff; border: 1px solid #ffe4e6;
       border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; padding: 4px;
@@ -180,7 +180,6 @@
 
   <div id="toast">操作成功！</div>
 
-  <!-- 右鍵/快捷狀態菜單 -->
   <div id="statusMenu" class="status-menu">
     <div class="status-menu-item" onclick="selectQuickStatus('未交')">⚠️ 未交</div>
     <div class="status-menu-item" onclick="selectQuickStatus('請假')">🏖️ 請假</div>
@@ -203,7 +202,7 @@
       </div>
       <div class="header-desc" style="margin-top:4px;">
         <span id="termStatusTag"></span>
-        <span class="empty-tag">🟨 淡黃格子：未登打提醒</span> ‧ <span class="lock-tag">防呆鎖定</span> ‧ <span class="highlight-tag">巡迴班 (02, 22, 23)</span>
+        <span class="empty-tag">🟨 淡黃格子：未登打提醒（按確認後仍會留存）</span> ‧ <span class="lock-tag">防呆鎖定</span> ‧ <span class="highlight-tag">巡迴班 (02, 22, 23)</span>
       </div>
     </div>
     <div class="btn-group">
@@ -463,7 +462,6 @@
       renderCategoryBar();
       renderTable();
 
-      // 點擊空白處隱藏狀態選單
       document.addEventListener('click', function(e) {
         if (!e.target.classList.contains('score-input')) {
           document.getElementById('statusMenu').style.display = 'none';
@@ -507,8 +505,8 @@
       showToast('已依建立時間排序（新項目在最左側）！');
     }
 
-    // ==== 判斷與渲染輸入框 CSS 類別 (含未登打提示) ====
-    function getScoreClass(val, isLocked) {
+    // ==== 修改：黃底提醒不論是否鎖定都持續存在 ====
+    function getScoreClass(val) {
       let cls = 'score-input';
       if (val === '未交' || val === '未') {
         cls += ' unsubmitted';
@@ -516,8 +514,8 @@
         cls += ' leave';
       } else if (val !== '' && !isNaN(val) && Number(val) < 60) {
         cls += ' fail';
-      } else if (val === '' && !isLocked) {
-        cls += ' empty-alert'; // 未鎖定且未登打之淡黃色提醒
+      } else if (val === '') {
+        cls += ' empty-alert'; // 只要為空白就永遠呈現黃底提醒
       }
       return cls;
     }
@@ -565,7 +563,7 @@
           const val = (itemScores[seat] !== undefined) ? itemScores[seat] : '';
           const isFieldLocked = archived || item.locked;
           
-          const cls = getScoreClass(val, isFieldLocked);
+          const cls = getScoreClass(val);
           const disabledAttr = isFieldLocked ? 'disabled title="' + (archived ? '學期已封存' : '已鎖定，請按最下方解鎖') + '"' : '';
 
           tbHTML += '<td>' +
@@ -599,7 +597,6 @@
       tfoot.innerHTML = tfHTML;
     }
 
-    // ==== 快捷狀態菜單選取與觸發 ====
     function showStatusMenu(e, el) {
       if (el.disabled) return;
       e.preventDefault();
@@ -704,7 +701,7 @@
             const inputEl = document.querySelector('input[data-col="' + targetCol + '"][data-row="' + targetRow + '"]');
             if (inputEl) {
               inputEl.value = cleanVal;
-              inputEl.className = getScoreClass(cleanVal, item.locked);
+              inputEl.className = getScoreClass(cleanVal);
             }
           });
           const totalEl = document.getElementById('total-' + seat);
@@ -836,7 +833,6 @@
       save(); renderTable();
     }
 
-    // ==== 總分計算邏輯（請假自動免除算入） ====
     function calcTotal(seat, sub, items) {
       if (!items || items.length === 0) return '-';
       let total = 0, validWeight = 0;
@@ -849,7 +845,6 @@
         let sum = 0, count = 0;
         catItems.forEach(function(it) {
           const raw = (scores[it.id] || {})[seat];
-          // 遇到請假類別時，不計入分母與分子；遇到「未交」算 0 分
           if (raw !== undefined && raw !== '' && leaveKeywords.indexOf(raw) === -1) {
             if (raw === '未交' || raw === '未') {
               sum += 0;
@@ -872,7 +867,6 @@
       const seat = el.getAttribute('data-seat');
       let val = el.value.trim();
 
-      // 快捷輸入自動補全
       if (val === '未') val = '未交';
       if (val === '請') val = '請假';
       el.value = val;
@@ -882,8 +876,7 @@
       scores[itemId][seat] = val;
       save();
 
-      const item = (getAssessments()[activeSubId] || []).find(function(it) { return it.id === itemId; });
-      el.className = getScoreClass(val, item ? item.locked : false);
+      el.className = getScoreClass(val);
 
       const sub = SUBJECTS.find(function(s) { return s.id === activeSubId; }) || SUBJECTS[0];
       const items = getAssessments()[activeSubId] || [];
